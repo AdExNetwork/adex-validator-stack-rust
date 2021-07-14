@@ -70,9 +70,11 @@ impl<S: BalancesState> Balances<S> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum OverflowError {
+    #[error("Spender {0} amount overflowed")]
     Spender(Address),
+    #[error("Earner {0} amount overflowed")]
     Earner(Address),
 }
 
@@ -193,33 +195,6 @@ mod de {
                 spenders: value.spenders,
                 state: PhantomData::<UncheckedState>::default(),
             }
-        }
-    }
-}
-
-#[cfg(feature = "postgres")]
-mod postgres {
-    use super::*;
-    use postgres_types::Json;
-    use tokio_postgres::Row;
-
-    impl TryFrom<&Row> for Accounting<CheckedState> {
-        type Error = Error;
-
-        fn try_from(row: &Row) -> Result<Self, Self::Error> {
-            let balances = Balances::<UncheckedState> {
-                earners: row.get::<_, Json<_>>("earners").0,
-                spenders: row.get::<_, Json<_>>("spenders").0,
-                state: PhantomData::default(),
-            }
-            .check()?;
-
-            Ok(Self {
-                channel: row.get("channel"),
-                balances,
-                updated: row.get("updated"),
-                created: row.get("created"),
-            })
         }
     }
 }
